@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Fairfax Farms Then and Now</title>
+  <meta charset="utf-8" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <style>
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+    }
+
+    .titleBox {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+      border-radius: 5px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <div class="titleBox">
+    <h3>Fairfax Farms Then and Now</h3>
+    <p>Historic farm dataset viewer</p>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <script>
+    const map = L.map('map').setView([38.85, -77.30], 11);
+
+    const osm = L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        attribution: '© OpenStreetMap contributors'
+      }
+    ).addTo(map);
+
+    const baseMaps = {
+      "OpenStreetMap": osm
+    };
+
+    const overlayMaps = {};
+
+    const layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+    // 1946 farms
+    fetch("./Farms1946_FeaturesToJSON.geojson")
+  .then(response => {
+    console.log("1946 response:", response);
+    if (!response.ok) {
+      throw new Error("1946 file not found or could not load");
+    }
+    return response.json();
+  })
+  .then(data => {
+    console.log("1946 farm data:", data);
+    console.log("1946 feature count:", data.features.length);
+    console.log("First 1946 feature:", data.features[0]);
+
+    const farms1946 = L.geoJSON(data, {
+      pointToLayer: function(feature, latlng) {
+        console.log("1946 point latlng:", latlng);
+
+        return L.circleMarker(latlng, {
+          radius: 7,
+          fillColor: "red",
+          color: "black",
+          weight: 1,
+          fillOpacity: 0.9
+        });
+      }
+    }).addTo(map);
+
+    layerControl.addOverlay(farms1946, "1946 Farm Sites");
+    map.fitBounds(farms1946.getBounds());
+  })
+  .catch(error => {
+    console.log("Error loading 1946 farms:", error);
+  });
+
+    // 2026 farms
+    fetch("./Farms2026_FeaturesToJSON.geojson")
+      .then(response => response.json())
+      .then(data => {
+        const farms2026 = L.geoJSON(data, {
+          pointToLayer: function(feature, latlng) {
+            return L.circleMarker(latlng, {
+              radius: 6,
+              fillColor: "green",
+              color: "black",
+              weight: 1,
+              fillOpacity: 0.8
+            });
+          },
+
+          onEachFeature: function(feature, layer) {
+            const p = feature.properties;
+
+            layer.bindPopup(
+              "<b>2026 Farm Site</b><br>" +
+              "Name: " + (p.name || "Unknown") + "<br>" +
+              "Type: " + (p.type || "Unknown")
+            );
+          }
+        }).addTo(map);
+
+        layerControl.addOverlay(farms2026, "2026 Farm Sites");
+      })
+      .catch(error => {
+        console.log("Error loading 2026 farms:", error);
+      });
+
+    // Roads
+    fetch("./PrimaryRoads.geojson")
+      .then(response => response.json())
+      .then(data => {
+        const roads = L.geoJSON(data, {
+          style: function(feature) {
+            return {
+              color: "black",
+              weight: 1.5,
+              opacity: 0.8
+            };
+          },
+
+          onEachFeature: function(feature, layer) {
+            const p = feature.properties;
+
+            layer.bindPopup(
+              "<b>Road</b><br>" +
+              "Name: " + (p.name || p.road_name || "Unknown")
+            );
+          }
+        }).addTo(map);
+
+        layerControl.addOverlay(roads, "Roads");
+      })
+      .catch(error => {
+        console.log("Error loading roads:", error);
+      });
+  </script>
+</body>
+</html>
